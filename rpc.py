@@ -17,15 +17,17 @@ class AuthenticationService(auth_pb2_grpc.AuthenticationServiceServicer):
         # RequestUserCredentials will always require an identity challenge
         # to protect against someone giving a user their challenge by
         # for example IM-ing the URL to somebody else.
-        challenge, event = self.web_challenge.new_challenge()
-        yield auth_pb2.CredentialResponse(required_action=challenge)
+        challenge, action, event = self.web_challenge.new()
+        yield auth_pb2.CredentialResponse(required_action=action)
         if event.wait(timeout=60.0) == False:
             return
+        response = self.web_challenge.ack(challenge)
+        print('Challenge response', response)
         yield auth_pb2.CredentialResponse()
 
 
 def serve(web_challenge):
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=100))
     auth_pb2_grpc.add_AuthenticationServiceServicer_to_server(
             AuthenticationService(web_challenge), server)
     reflection.enable_server_reflection(('AuthenticationService', ), server)

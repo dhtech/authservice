@@ -1,3 +1,4 @@
+import http.cookies
 import http.server
 import pamela
 import socket
@@ -20,12 +21,21 @@ class HttpRequestHandler(http.server.BaseHTTPRequestHandler):
     def _require_challenge(self):
         path = urllib.parse.urlparse(self.path)
         challenge = str(urllib.parse.parse_qs(path.query)['challenge'][0])
-        if not self.server.challenge.has_challenge(challenge):
+        if not self.server.challenge.has(challenge):
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b'No such challenge')
             return None
         return challenge
+
+    def _cookie(self, user):
+        c = http.cookies.Morsel()
+        c.key = 'tech-auth'
+        c.value = user
+        c['secure'] = 1;
+        c['domain'] = '*.tech.dreamhack.se'
+        # TODO: actual cookie here, not just the user of course :-)
+        return c.OutputString()
 
     def do_GET(self):
         path = urllib.parse.urlparse(self.path)
@@ -33,7 +43,7 @@ class HttpRequestHandler(http.server.BaseHTTPRequestHandler):
             if self._require_challenge() is None:
                 return
             self.send_response(200)
-            self.send_header('Content-type', 'text/html')
+            self.send_header('content-type', 'text/html')
             self.end_headers()
             with open('login.html', 'rb') as f:
                 self.wfile.write(f.read())
@@ -47,11 +57,12 @@ class HttpRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         """Handle client login challenges.
 
-        The authentication could not find a cookie and challenged
-        the user to prover their identity, that's why we are here.
+        The authentication system challenged the user to prove their identity,
+        that's why we are here. This could be because the cookie has
+        expired, or the thing we're authenticating cannot trust only a cookie.
 
         If the user succeeds in logging in, mark the challenge as completed
-        by posting a WebChallengeResponse to the internal challenge queue.
+        and mint a new credentials cookie.
         """
         path = urllib.parse.urlparse(self.path)
         if path.path != '/auth':
@@ -76,11 +87,14 @@ class HttpRequestHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'Login failed')
             return
+        # Success! Poke the challenge and return a new authentication cookie
         ip, port, _, _ = self.client_address
-        self.server.challenge.finish_challenge(
+        self.server.challenge.finish(
                 challenge, internal_pb2.WebChallengeResponse(
                     challenge=challenge, user=user, ip=ip, port=port))
         self.send_response(200)
+        self.send_header('set-cookie', self._cookie(user))
+        self.send_header('content-type', 'text/html')
         self.end_headers()
         self.wfile.write(b'Login OK')
 
@@ -90,22 +104,24 @@ class WebChallenge(object):
     def __init__(self):
         self.challenges = {}
 
-    def new_challenge(self):
+    def new(self):
         challenge = str(uuid.uuid1())
         event = threading.Event()
         self.challenges[challenge] = [event, None]
-        return auth_pb2.UserAction(url='/auth?challenge=' + challenge), event
+        action = auth_pb2.UserAction(url='/auth?challenge=' + challenge)
+        return challenge, action, event
 
-    def has_challenge(self, challenge):
+    def has(self, challenge):
         return challenge in self.challenges
 
-    def finish_challenge(self, challenge, result):
+    def finish(self, challenge, result):
         self.challenges[challenge][1] = result
         self.challenges[challenge][0].set()
 
-    def ack_challenge(self, challenge):
-        return self.challenges[challenges][1]
+    def ack(self, challenge):
+        response = self.challenges[challenge][1]
         del self.challenges[challenge]
+        return response
 
 
 def serve():
