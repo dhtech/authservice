@@ -6,8 +6,8 @@ import webui
 
 
 def start():
-    rpc_server = rpc.serve()
     webui_server = webui.serve()
+    rpc_server = rpc.serve(webui_server.challenge)
     try:
         while True:
             signal.pause()
