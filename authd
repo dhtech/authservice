@@ -1,0 +1,34 @@
+#!/usr/bin/env python3
+from grpc_reflection.v1alpha import reflection
+from concurrent import futures
+import grpc
+import signal
+
+from auth import auth_pb2
+from auth import auth_pb2_grpc
+
+
+class AuthenticationService(auth_pb2_grpc.AuthenticationServiceServicer):
+
+  def RequestCredential(self, request, context):
+    yield auth_pb2.NewCredentialResponse(required_action=(
+        auth_pb2.UserAction(url="http://google.se")))
+
+
+def serve():
+  server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+  auth_pb2_grpc.add_AuthenticationServiceServicer_to_server(
+      AuthenticationService(), server)
+  reflection.enable_server_reflection(('AuthenticationService', ), server)
+  server.add_insecure_port('[::]:1214')
+  server.start()
+
+  try:
+    while True:
+      signal.pause()
+  except KeyboardInterrupt:
+    pass
+  server.stop(0)
+
+if __name__ == '__main__':
+  serve()
