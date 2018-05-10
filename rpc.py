@@ -17,7 +17,7 @@ class AuthenticationService(auth_pb2_grpc.AuthenticationServiceServicer):
         # RequestUserCredentials will always require an identity challenge
         # to protect against someone giving a user their challenge by
         # for example IM-ing the URL to somebody else.
-        challenge, action, event = self.web_challenge.new()
+        challenge, action, event = self.web_challenge.new(request.client_validation)
         yield auth_pb2.CredentialResponse(required_action=action)
         if event.wait(timeout=60.0) == False:
             return

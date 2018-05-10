@@ -40,13 +40,19 @@ class HttpRequestHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = urllib.parse.urlparse(self.path)
         if path.path == '/auth':
-            if self._require_challenge() is None:
+            challenge = self._require_challenge()
+            if challenge is None:
                 return
+            # TODO(bluecmd): Move this client validation stuff to not be so
+            # deeply nested in the structure.
+            client_validation = self.server.challenge.client_validation(challenge)
             self.send_response(200)
             self.send_header('content-type', 'text/html')
             self.end_headers()
             with open('login.html', 'rb') as f:
-                self.wfile.write(f.read())
+                page = f.read().decode('utf-8')
+                page = page.replace('{{ident}}', client_validation.ident)
+                self.wfile.write(page.encode())
             return
 
         self.send_response(200)
@@ -104,15 +110,18 @@ class WebChallenge(object):
     def __init__(self):
         self.challenges = {}
 
-    def new(self):
+    def new(self, client_validation):
         challenge = str(uuid.uuid1())
         event = threading.Event()
-        self.challenges[challenge] = [event, None]
+        self.challenges[challenge] = [event, None, client_validation]
         action = auth_pb2.UserAction(url='/auth?challenge=' + challenge)
         return challenge, action, event
 
     def has(self, challenge):
         return challenge in self.challenges
+
+    def client_validation(self, challenge):
+        return self.challenges[challenge][2]
 
     def finish(self, challenge, result):
         self.challenges[challenge][1] = result

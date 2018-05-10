@@ -1,11 +1,55 @@
 <html>
+<head>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
+<script>
+var ident = "{{ident}}";
+</script>
+</head>
 <body>
-<h1>Login</h1>
-<!-- TODO: Switch this to a async POST to be able to window.close() when we're done -->
-<form method="POST">
-<input name="username" type="text">
-<input name="password" type="password">
-<input type="submit" value="Login">
-</form>
+<div id="validating">
+	<div class="alert alert-primary" role="alert">
+	  Trying to talk to prodaccess to validate your login request ...
+	</div>
+</div>
+<div id="error" style="display: none">
+	<div class="alert alert-danger" role="alert">
+	  Validation of login failed, I don't believe you are the one trying to log in.<br>
+	  Please try again
+	</div>
+</div>
+<div id="login" style="display: none">
+	<h1>Login</h1>
+	<!-- TODO: Switch this to a async POST to be able to window.close() when we're done -->
+	<form method="POST">
+	<input name="username" type="text">
+	<input name="password" type="password">
+	<input type="submit" value="Login">
+	</form>
+</div>
+
+<script>
+var xhr = new XMLHttpRequest();
+xhr.onreadystatechange = function() {
+  if (this.readyState == 4) {
+    if (this.status == 200 && this.responseText == ident) {
+      console.log("Correct ident received");
+      document.getElementById("login").style.display = "block";
+      document.getElementById("validating").style.display = "none";
+    } else {
+      console.log("Error verifying local prodaccess");
+      console.log(this);
+      document.getElementById("error").style.display = "block";
+      document.getElementById("validating").style.display = "none";
+    }
+  }
+}
+/* Note this needs to be 127.0.0.1 and not "localhost" for Firefox to
+   be happy. */
+xhr.open("GET", "http://127.0.0.1:1215/");
+xhr.send();
+</script>
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js" integrity="sha384-smHYKdLADwkXOn1EmN1qk/HfnUcbVRZyYmZ4qpPea6sjB/pTJ0euyQp0Mk8ck+5T" crossorigin="anonymous"></script>
 </body>
 </html>
