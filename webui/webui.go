@@ -23,6 +23,19 @@ type loginSession struct {
 }
 
 func (s *webuiServer) handleLogin(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		s.renderLogin(w, r)
+	}
+	if r.Method == "POST" {
+		s.processLogin(w, r)
+	}
+}
+
+func (s *webuiServer) processLogin(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Processing login, TODO")
+}
+
+func (s *webuiServer) renderLogin(w http.ResponseWriter, r *http.Request) {
   w.Header().Add("content-type", "text/html;charset=utf-8")
 	err := s.loginTmpl.Execute(w, s.sessions[r.URL.Query()["session"][0]])
 	if err != nil {

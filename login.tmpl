@@ -1,30 +1,94 @@
-<html>
+<!doctype html>
+<html lang="en">
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
 <script>
 var ident = "{{.Ident}}";
 </script>
+<style>
+html,
+body {
+  height: 100%;
+}
+
+body {
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-align: center;
+  align-items: center;
+  padding-top: 40px;
+  padding-bottom: 40px;
+  background-color: #f5f5f5;
+}
+
+.form-signin {
+  position: relative;
+  top: -20%;
+  width: 80%;
+  padding: 15px;
+  margin: auto;
+}
+.form-signin #login {
+  max-width: 330px;
+  margin: auto;
+}
+.form-signin .checkbox {
+  font-weight: 400;
+}
+.form-signin .form-control {
+  position: relative;
+  box-sizing: border-box;
+  height: auto;
+  padding: 10px;
+  font-size: 16px;
+}
+.form-signin .form-control:focus {
+  z-index: 2;
+}
+.form-signin input[type="username"] {
+  margin-bottom: -1px;
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.form-signin input[type="password"] {
+  margin-bottom: 10px;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+#error, #validating, #login {
+  width: 100%;
+}
+#logo {
+  width: 20em;
+  padding-bottom: 50px;
+}
+</style>
 </head>
-<body>
-<div id="validating">
-	<div class="alert alert-primary" role="alert">
-	  Trying to talk to prodaccess to validate your login request ...
-	</div>
-</div>
-<div id="error" style="display: none">
-	<div class="alert alert-danger" role="alert">
-	  Validation of login failed, I don't believe you are the one trying to log in.<br>
-	  Please try again
-	</div>
-</div>
-<div id="login" style="display: none">
-	<h1>Login</h1>
-	<!-- TODO: Switch this to a async POST to be able to window.close() when we're done -->
-	<form method="POST">
-	<input name="username" type="text">
-	<input name="password" type="password">
-	<input type="submit" value="Login">
-	</form>
+<body class="text-center">
+  <!-- TODO: Switch this to a async POST to be able to window.close() when we're done -->
+  <form class="form-signin">
+    <img id="logo" class="mb-4" src="https://company.dreamhack.com/wp-content/uploads/2017/03/DreamHack_onWhite-RGB.png" alt="Logo">
+    <div id="validating">
+      <div class="alert alert-primary" role="alert">
+        Trying to talk to prodaccess to validate your login request ...
+      </div>
+    </div>
+    <div id="error" style="display: none">
+      <div class="alert alert-danger" role="alert">
+        Validation of login failed, I don't believe you are the one trying to log in.<br>
+        Please try again
+      </div>
+    </div>
+    <div id="login" style="display: none">
+      <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+      <label for="username" class="sr-only">Username</label>
+      <input type="username" id="username" class="form-control" placeholder="Username" required autofocus>
+      <label for="password" class="sr-only">Password</label>
+      <input type="password" id="password" class="form-control" placeholder="Password" required>
+      <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+    </div>
+  </form>
 </div>
 
 <script>
@@ -35,6 +99,7 @@ xhr.onreadystatechange = function() {
       console.log("Correct ident received");
       document.getElementById("login").style.display = "block";
       document.getElementById("validating").style.display = "none";
+      document.getElementById("username").focus();
     } else {
       console.log("Error verifying local prodaccess");
       console.log(this);
@@ -43,10 +108,15 @@ xhr.onreadystatechange = function() {
     }
   }
 }
-/* Note this needs to be 127.0.0.1 and not "localhost" for Firefox to
-   be happy. */
-xhr.open("GET", "http://127.0.0.1:1215/");
-xhr.send();
+
+/* Induce a 1s delay to make the user aware we're checking and to get a chance
+ * of reading the message. */
+setTimeout(function() {
+  /* Note this needs to be 127.0.0.1 and not "localhost" for Firefox to
+   * be happy. */
+  xhr.open("GET", "http://127.0.0.1:1215/");
+  xhr.send();
+}, 1000);
 </script>
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
