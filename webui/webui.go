@@ -3,6 +3,7 @@ package webui
 import (
 	"fmt"
 	"html/template"
+	"log"
 	"net"
 	"net/http"
 	"sync"
@@ -18,13 +19,15 @@ type webuiServer struct {
 }
 
 type loginSession struct {
-	ident string
+	Ident string
 }
 
 func (s *webuiServer) handleLogin(w http.ResponseWriter, r *http.Request) {
-  w.Header().Add("content-type", "text/html")
-	s.loginTmpl.Execute(w, s.sessions[r.URL.Query()["session"][0]])
-	w.Write([]byte("Hello world"))
+  w.Header().Add("content-type", "text/html;charset=utf-8")
+	err := s.loginTmpl.Execute(w, s.sessions[r.URL.Query()["session"][0]])
+	if err != nil {
+		log.Printf("error when rendering login template: %v", err)
+	}
 }
 
 func (s *webuiServer) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction) (*pb.VerifiedUser, error) {
@@ -35,7 +38,7 @@ func (s *webuiServer) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction
 	// and U2F/OTP (TODO(bluecmd)).
 	sid := uuid.New().String()
 	s.sessions[sid] = &loginSession{
-		ident: r.ClientValidation.Ident,
+		Ident: r.ClientValidation.Ident,
 	}
 	aq <- &pb.UserAction{Url: fmt.Sprintf("/login?session=%s", sid)}
 	
