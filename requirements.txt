@@ -1,4 +1,0 @@
-grpcio
-grpcio_reflection
-grpcio-tools
-pamela
