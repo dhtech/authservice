@@ -11,10 +11,16 @@ import (
 
 type loginSession struct {
 	p *webuiServer
+	// Structured attempt queue
 	atq chan verify.Attempt
+	// Redirect queue
+	rq chan string
+	// Attempt error queue
 	eq chan error
+
 	id string
 	Ident string
+	NextUrl string
 }
 
 type attempt struct {
@@ -32,11 +38,14 @@ func (a *attempt) Credential() string {
 
 func (s *webuiServer) NewSession(r *pb.UserCredentialRequest, atq chan verify.Attempt, eq chan error) verify.Session {
 	id := uuid.New().String()
+	rq := make(chan string, 1)
 	sess := &loginSession{
 		Ident: r.ClientValidation.Ident,
+		NextUrl: fmt.Sprintf("/next?session=%s", id),
 		id: id,
 		eq: eq,
 		atq: atq,
+		rq: rq,
 		p: s,
 	}
 	s.sessionLock.Lock()
@@ -50,7 +59,13 @@ func (s *loginSession) ChallengeLogin() *pb.UserAction {
 }
 
 func (s *loginSession) ChallengeReview() *pb.UserAction {
-	return &pb.UserAction{Url: fmt.Sprintf("/details?session=%s", s.id)}
+	s.rq <- fmt.Sprintf("/review?session=%s", s.id)
+	return nil
+}
+
+func (s *loginSession) ChallengeComplete() *pb.UserAction {
+	s.rq <- "/complete"
+	return nil
 }
 
 func (s *loginSession) ProcessLogin(username string, password string) error {
@@ -62,19 +77,15 @@ func (s *loginSession) ProcessLogin(username string, password string) error {
 	}
 }
 
+func (s *loginSession) NextStep() string {
+	return <-s.rq
+}
+
 func (s *loginSession) Destroy() {
 	s.p.sessionLock.Lock()
 	delete(s.p.sessions, s.id)
 	s.p.sessionLock.Unlock()
-	// Flush all error readers if there are any
-	for {
-		select {
-		case s.eq <- fmt.Errorf("internal error: session destroyed"):
-			continue
-		default:
-			break
-		}
-	}
+	close(s.rq)
 	log.Printf("Cleaned up session %s", s.id)
 }
 

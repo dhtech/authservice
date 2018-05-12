@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css" integrity="sha384-WskhaSGFgHYWDcbwN70/dfYBj47jz9qbsMId/iRN3ewGhXQFZCSftd1LZCfmhktB" crossorigin="anonymous">
 <script>
 var ident = "{{.Ident}}";
+var nextUrl = "{{.NextUrl}}";
 </script>
 <style>
 html,
@@ -66,8 +67,7 @@ body {
 </style>
 </head>
 <body class="text-center">
-  <!-- TODO: Switch this to a async POST to be able to window.close() when we're done -->
-  <form class="form-signin">
+  <form class="form-signin" action="#" method="POST" onsubmit="return postForm()">
     <img id="logo" class="mb-4" src="https://company.dreamhack.com/wp-content/uploads/2017/03/DreamHack_onWhite-RGB.png" alt="Logo">
     <div id="validating">
       <div class="alert alert-primary" role="alert">
@@ -83,18 +83,40 @@ body {
     <div id="login" style="display: none">
       <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
       <label for="username" class="sr-only">Username</label>
-      <input type="username" id="username" class="form-control" placeholder="Username" required autofocus>
+      <input name="username" type="username" id="username" class="form-control" placeholder="Username" required autofocus>
       <label for="password" class="sr-only">Password</label>
-      <input type="password" id="password" class="form-control" placeholder="Password" required>
+      <input name="password" type="password" id="password" class="form-control" placeholder="Password" required>
       <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
     </div>
   </form>
-</div>
 
 <script>
+function postForm() {
+  var xhr = new XMLHttpRequest();
+  xhr.open("POST", window.location.href);
+  xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState == XMLHttpRequest.DONE) {
+      if (xhr.status == 200) {
+        // We're done with this stage
+        window.close();
+      } else {
+        alert("Login failed! TODO: Nice dialog here")
+      }
+    }
+  }
+
+  var username = document.getElementById("username").value
+  var password = document.getElementById("password").value
+  xhr.send(
+    "username=" + encodeURIComponent(username) +
+    "&password=" + encodeURIComponent(password));
+  // Stop form from submiting a second time
+  return false;
+}
 var xhr = new XMLHttpRequest();
 xhr.onreadystatechange = function() {
-  if (this.readyState == 4) {
+  if (this.readyState == XMLHttpRequest.DONE) {
     if (this.status == 200 && this.responseText == ident) {
       console.log("Correct ident received");
       document.getElementById("login").style.display = "block";
@@ -117,6 +139,22 @@ setTimeout(function() {
   xhr.open("GET", "http://127.0.0.1:1215/");
   xhr.send();
 }, 1000);
+
+function next() {
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function() {
+    if (this.readyState == XMLHttpRequest.DONE) {
+      if (this.status == 200) {
+        window.location.href = this.responseText;
+      } else {
+        setTimeout(next, 1000);
+      }
+    }
+  }
+  xhr.open("POST", nextUrl);
+  xhr.send();
+}
+next();
 </script>
 <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
