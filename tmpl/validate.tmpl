@@ -1,6 +1,6 @@
 {{define "head-script"}}
 <script>
-var ident = "{{.Ident}}";
+var ident = "{{.Request.ClientValidation.Ident}}";
 var nextUrl = "{{.NextUrl}}";
 </script>
 {{end}}

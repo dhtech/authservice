@@ -19,9 +19,10 @@ type loginSession struct {
 	eq chan error
 
 	id string
-	Ident string
+	Request *pb.UserCredentialRequest
 	NextUrl string
 	Page string
+	VerifiedUser *pb.VerifiedUser
 }
 
 type attempt struct {
@@ -41,7 +42,7 @@ func (s *webuiServer) NewSession(r *pb.UserCredentialRequest, atq chan verify.At
 	id := uuid.New().String()
 	rq := make(chan string, 1)
 	sess := &loginSession{
-		Ident: r.ClientValidation.Ident,
+		Request: r,
 		NextUrl: fmt.Sprintf("/next?session=%s", id),
 		id: id,
 		eq: eq,
@@ -59,7 +60,8 @@ func (s *loginSession) ChallengeLogin() *pb.UserAction {
 	return &pb.UserAction{Url: fmt.Sprintf("/login?session=%s", s.id)}
 }
 
-func (s *loginSession) ChallengeReview() *pb.UserAction {
+func (s *loginSession) ChallengeReview(u *pb.VerifiedUser) *pb.UserAction {
+	s.VerifiedUser = u
 	s.rq <- fmt.Sprintf("/review?session=%s", s.id)
 	return nil
 }

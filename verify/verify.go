@@ -25,7 +25,7 @@ type Session interface {
 	ChallengeLogin() *pb.UserAction
 
 	// A request for the user to acknowledge the credentials being minted
-	ChallengeReview() *pb.UserAction
+	ChallengeReview(*pb.VerifiedUser) *pb.UserAction
 
 	// The final screen showing something nice to the user prompting to close
 	// the window.
@@ -52,14 +52,12 @@ func waitForAttempt(atq chan Attempt) (Attempt, error) {
 	}
 }
 
-func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction) (*pb.VerifiedUser, error) {
+func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, user *pb.VerifiedUser) error {
 	// Challenge the user to visit our login web page where we will talk to the
 	// local prodaccess running on the user's computer to try to verify that
 	// the user has not been tricked to follow some other person's link.
 	// After that, we will challenge the user to login as usual using LDAP
 	// and U2F/OTP (TODO(bluecmd)).
-
-	user := pb.VerifiedUser{}
 
 	// Used to read the attempts gathered from the UI.
 	atq := make(chan Attempt, 1)
@@ -77,7 +75,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction) (
 	}
 	a, err := waitForAttempt(atq)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// TODO(bluecmd): Verify attempt
 	eq <- nil
@@ -86,15 +84,18 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction) (
 	// other challenge methods we should use (TODO).
 	user.Username = a.Username()
 
+	// TODO(bluecmd): real groups
+	user.Group = append(user.Group, "test", "test2-long-group-name")
+
 	// Present the user with all the details about what we're about to generate
 	// and let them review the data.
-	c = s.ChallengeReview()
+	c = s.ChallengeReview(user)
 	if c != nil {
 		aq <- c
 	}
 	_, err = waitForAttempt(atq)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// The review always succeeded if it didn't time out
 	eq <- nil
@@ -104,7 +105,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction) (
 	if c != nil {
 		aq <- c
 	}
-	return &user, fmt.Errorf("not implemented")
+	return fmt.Errorf("not implemented")
 }
 
 func New(sessionServer SessionServer) *verifier {

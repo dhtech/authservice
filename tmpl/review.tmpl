@@ -1,5 +1,24 @@
 {{define "login"}}
-These are the details: TODO
+<p>These are the details:</p>
+
+<table>
+<tr><td style="width: 10em">Origin:</td><td>
+From IP <code>{{.VerifiedUser.Ip}}</code>
+which resolves to
+<code>{{.VerifiedUser.ReverseDns}}</code>
+from port
+<code>{{.VerifiedUser.Port}}</code>
+</td></tr>
+<tr><td>Username:</td><td><code>{{.VerifiedUser.Username}}</code></td></tr>
+<tr><td>Groups:</td><td>
+{{ range .VerifiedUser.Group }}
+<code>{{.}}</code>
+{{ end }}
+</td></tr>
+<tr><td>SSH Public Key:</td><td><code>{{.Request.SshCertificateRequest.PublicKey}}</code></td></tr>
+</table>
+
+<br>
 <button id="ok" class="btn btn-lg btn-primary btn-block" type="submit">Looks OK</button>
 {{end}}
 

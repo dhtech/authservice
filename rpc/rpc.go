@@ -5,12 +5,13 @@ import (
 	"net"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/reflection"
 	pb "github.com/dhtech/proto/auth"
 )
 
 type Verifier interface {
-	Verify(*pb.UserCredentialRequest, chan *pb.UserAction) (*pb.VerifiedUser, error)
+	Verify(*pb.UserCredentialRequest, chan *pb.UserAction, *pb.VerifiedUser) error
 }
 
 type Signer interface {
@@ -33,13 +34,23 @@ func (s *authServer) RequestUserCredential(r *pb.UserCredentialRequest, stream p
 			})
 		}
 	}()
-	v, err := s.verifier.Verify(r, aq)
+
+	p, _ := peer.FromContext(stream.Context())
+	ip, port, _ := net.SplitHostPort(p.Addr.String())
+	user := pb.VerifiedUser{Ip: ip, Port: port}
+
+	rdns, err := net.LookupAddr(ip)
+	if err == nil {
+		user.ReverseDns = rdns[0]
+	}
+
+	err = s.verifier.Verify(r, aq, &user)
 	if err != nil {
 		log.Printf("User failed validation: %v", err)
 		return err
 	}
 	log.Printf("Done verifying %v, proceeding to signing", *r)
-	s.signer.Sign(r, v)
+	s.signer.Sign(r, &user)
 	return nil
 }
 
