@@ -7,6 +7,7 @@ import (
 
 	"github.com/cockroachdb/cmux"
 	"github.com/dhtech/authservice/rpc"
+	"github.com/dhtech/authservice/verify"
 	"github.com/dhtech/authservice/webui"
 )
 
@@ -27,7 +28,8 @@ func main() {
 	sh := mux.Match(cmux.Any())
 
 	w := webui.New()
-	r := rpc.New(nil, w)
+	v := verify.New(w)
+	r := rpc.New(nil, v)
 
 	go r.Serve(sg)
 	go w.Serve(sh)
