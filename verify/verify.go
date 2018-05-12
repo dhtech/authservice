@@ -110,7 +110,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 	if c != nil {
 		aq <- c
 	}
-	return fmt.Errorf("not implemented")
+	return nil
 }
 
 func New(sessionServer SessionServer) *verifier {

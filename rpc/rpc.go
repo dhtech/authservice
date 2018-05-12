@@ -50,7 +50,11 @@ func (s *authServer) RequestUserCredential(r *pb.UserCredentialRequest, stream p
 		return err
 	}
 	log.Printf("Done verifying %v, proceeding to signing", *r)
-	s.signer.Sign(r, &user)
+	res, err := s.signer.Sign(r, &user)
+	if err != nil {
+		return err
+	}
+	stream.Send(res)
 	return nil
 }
 
