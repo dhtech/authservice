@@ -37,7 +37,7 @@ func (s *authServer) RequestUserCredential(r *pb.UserCredentialRequest, stream p
 
 	p, _ := peer.FromContext(stream.Context())
 	ip, port, _ := net.SplitHostPort(p.Addr.String())
-	user := pb.VerifiedUser{Ip: ip, Port: port}
+	user := pb.VerifiedUser{Ip: ip, Port: port, ReverseDns: "unknown"}
 
 	rdns, err := net.LookupAddr(ip)
 	if err == nil {
