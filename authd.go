@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/cockroachdb/cmux"
+	"github.com/dhtech/authservice/audit"
 	"github.com/dhtech/authservice/rpc"
 	"github.com/dhtech/authservice/sign"
 	"github.com/dhtech/authservice/verify"
@@ -28,7 +29,8 @@ func main() {
 	sg := mux.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
 	sh := mux.Match(cmux.Any())
 
-	si := sign.New()
+	a := audit.New()
+	si := sign.New(a)
 	w := webui.New()
 	v := verify.New(w)
 	r := rpc.New(si, v)

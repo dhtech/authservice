@@ -3,6 +3,7 @@ package verify
 import (
 	"flag"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/dhtech/authservice/auth"
@@ -10,7 +11,7 @@ import (
 )
 
 var (
-	verifyTimeout = flag.Int("verify_timeout", 600, "Seconds before a verify attempt times out.")
+	verifyTimeout = flag.String("verify_timeout", "10m", "Seconds before a verify attempt times out.")
 )
 
 type Session interface {
@@ -41,10 +42,14 @@ type verifier struct {
 }
 
 func waitForAttempt(atq chan auth.Attempt) (auth.Attempt, error) {
+	tmout, err := time.ParseDuration(*verifyTimeout)
+	if err != nil {
+		log.Fatalf("failed to parse verification timeout: %v", err)
+	}
 	select {
 	case a := <-atq:
 		return a, nil
-	case <-time.After(time.Duration(*verifyTimeout) * time.Second):
+	case <-time.After(tmout):
 		return nil, fmt.Errorf("Session timed out")
 	}
 }
