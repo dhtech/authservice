@@ -110,6 +110,9 @@ func (s *webuiServer) withSession(rh func(*loginSession, http.ResponseWriter, *h
 }
 
 func (s *webuiServer) Serve(l net.Listener) {
+	// TODO(bluecmd): We probably want to verify a cookie to make it so that an
+	// attacker cannot simply refresh /review?session=XXX if they get their hands
+	// on the session ID (which is not supposed to be secret).
 	http.HandleFunc("/login", s.withSession(s.handleLogin))
 	http.HandleFunc("/next", s.withSession(s.handleNext))
 	http.HandleFunc("/review", s.withSession(s.handleReview))
