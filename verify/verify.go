@@ -73,12 +73,22 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 	if c != nil {
 		aq <- c
 	}
-	a, err := waitForAttempt(atq)
-	if err != nil {
-		return err
+
+	var a Attempt
+	for {
+		var err error
+		a, err = waitForAttempt(atq)
+		if err != nil {
+			return err
+		}
+		// TODO(bluecmd): Verify attempt
+		if a.Username() == "error" {
+			eq <- fmt.Errorf("forbidden username")
+			continue
+		}
+		eq <- nil
+		break
 	}
-	// TODO(bluecmd): Verify attempt
-	eq <- nil
 
 	// Now we know the username, use it to look up what groups and what
 	// other challenge methods we should use (TODO).
@@ -93,7 +103,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 	if c != nil {
 		aq <- c
 	}
-	_, err = waitForAttempt(atq)
+	_, err := waitForAttempt(atq)
 	if err != nil {
 		return err
 	}

@@ -97,10 +97,11 @@ function postForm() {
   xhr.onreadystatechange = function() {
     if (xhr.readyState == XMLHttpRequest.DONE) {
       if (xhr.status == 200) {
-        // We're done with this stage
-        window.close();
+        // We're done with this stage.
+        // The "next()" function will now return and redirect us to the next
+        // page.
       } else {
-        alert("Login failed! TODO: Nice dialog here")
+        failed();
       }
     }
   }

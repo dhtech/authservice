@@ -1,7 +1,10 @@
 {{define "login"}}
 <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+<div id="wrong" class="alert alert-danger" role="alert" style="display: none">
+Invalid username or password. Try again.
+</div>
 <label for="username" class="sr-only">Username</label>
-<input name="username" type="username" id="username" class="form-control" placeholder="Username" required autofocus>
+<input name="username" type="text" id="username" class="form-control" placeholder="Username" required autofocus>
 <label for="password" class="sr-only">Password</label>
 <input name="password" type="password" id="password" class="form-control" placeholder="Password" required>
 <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
@@ -12,11 +15,25 @@
 function getFormData() {
   var username = document.getElementById("username").value
   var password = document.getElementById("password").value
+  // Remember the username
+  localStorage.setItem("username", username);
   return "username=" + encodeURIComponent(username) +
     "&password=" + encodeURIComponent(password);
 }
 function startForm() {
-  document.getElementById("username").focus();
+  var username = localStorage.getItem("username");
+  if (username != null) {
+    document.getElementById("username").value = username
+    document.getElementById("password").focus();
+  } else {
+    document.getElementById("username").focus();
+  }
+}
+function failed() {
+  document.getElementById("wrong").style.display = "block";
+  document.getElementById("username").value = "";
+  document.getElementById("password").value = "";
+  startForm();
 }
 </script>
 {{end}}
