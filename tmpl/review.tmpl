@@ -12,7 +12,7 @@ from port
 <tr><td>Username:</td><td><code>{{.VerifiedUser.Username}}</code></td></tr>
 <tr><td>Groups:</td><td>
 {{ range .VerifiedUser.Group }}
-<code>{{.}}</code>
+<code>{{.}}</code><br>
 {{ end }}
 </td></tr>
 <tr><td>SSH Public Key:</td><td><code>{{.Request.SshCertificateRequest.PublicKey}}</code></td></tr>

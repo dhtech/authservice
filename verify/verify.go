@@ -3,22 +3,15 @@ package verify
 import (
 	"flag"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/dhtech/authservice/auth"
 	pb "github.com/dhtech/proto/auth"
 )
 
 var (
 	verifyTimeout = flag.Int("verify_timeout", 600, "Seconds before a verify attempt times out.")
 )
-
-type Attempt interface {
-	// Only used for username/password auth
-	Username() string
-	// Used for password/OTP/U2F
-	Credential() string
-}
 
 type Session interface {
 	// A request for username/password
@@ -35,17 +28,21 @@ type Session interface {
 }
 
 type SessionServer interface {
-	NewSession(*pb.UserCredentialRequest, chan Attempt, chan error) Session
+	NewSession(*pb.UserCredentialRequest, chan auth.Attempt, chan error) Session
+}
+
+type AuthBackend interface {
+	Verify(auth.Attempt) ([]string, error)
 }
 
 type verifier struct {
 	sessionServer SessionServer
+	ldap AuthBackend
 }
 
-func waitForAttempt(atq chan Attempt) (Attempt, error) {
+func waitForAttempt(atq chan auth.Attempt) (auth.Attempt, error) {
 	select {
 	case a := <-atq:
-		log.Printf("Got attempt: %v", a)
 		return a, nil
 	case <-time.After(time.Duration(*verifyTimeout) * time.Second):
 		return nil, fmt.Errorf("Session timed out")
@@ -60,7 +57,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 	// and U2F/OTP (TODO(bluecmd)).
 
 	// Used to read the attempts gathered from the UI.
-	atq := make(chan Attempt, 1)
+	atq := make(chan auth.Attempt, 1)
 	// Queue used to push back errors during login. Success is nil.
 	eq := make(chan error, 1)
 	defer close(atq)
@@ -74,28 +71,26 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 		aq <- c
 	}
 
-	var a Attempt
+	var a auth.Attempt
+	var groups []string
 	for {
 		var err error
 		a, err = waitForAttempt(atq)
 		if err != nil {
 			return err
 		}
-		// TODO(bluecmd): Verify attempt
-		if a.Username() == "error" {
-			eq <- fmt.Errorf("forbidden username")
-			continue
+		groups, err = v.ldap.Verify(a)
+		if err == nil {
+			eq <- nil
+			break
 		}
-		eq <- nil
-		break
+		eq <- fmt.Errorf("LDAP authentication failed")
 	}
 
 	// Now we know the username, use it to look up what groups and what
 	// other challenge methods we should use (TODO).
 	user.Username = a.Username()
-
-	// TODO(bluecmd): real groups
-	user.Group = append(user.Group, "test", "test2-long-group-name")
+	user.Group = append(user.Group, groups...)
 
 	// Present the user with all the details about what we're about to generate
 	// and let them review the data.
@@ -121,6 +116,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 func New(sessionServer SessionServer) *verifier {
 	v := verifier{
 		sessionServer: sessionServer,
+		ldap: auth.NewLdap(),
 	}
 	return &v
 }

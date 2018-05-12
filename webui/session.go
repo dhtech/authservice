@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/dhtech/authservice/auth"
 	"github.com/dhtech/authservice/verify"
 	pb "github.com/dhtech/proto/auth"
 	"github.com/google/uuid"
@@ -12,7 +13,7 @@ import (
 type loginSession struct {
 	p *webuiServer
 	// Structured attempt queue
-	atq chan verify.Attempt
+	atq chan auth.Attempt
 	// Redirect queue
 	rq chan string
 	// Attempt error queue
@@ -42,7 +43,7 @@ func (a *attempt) Credential() string {
 	return a.credential
 }
 
-func (s *webuiServer) NewSession(r *pb.UserCredentialRequest, atq chan verify.Attempt, eq chan error) verify.Session {
+func (s *webuiServer) NewSession(r *pb.UserCredentialRequest, atq chan auth.Attempt, eq chan error) verify.Session {
 	id := uuid.New().String()
 	rq := make(chan string, 1)
 	sess := &loginSession{
