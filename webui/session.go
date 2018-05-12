@@ -18,6 +18,10 @@ type loginSession struct {
 	// Attempt error queue
 	eq chan error
 
+	// On the first request this cookie is set to pin the session to a single
+	// browser. Attempting to set this twice will fail.
+	cookie string
+
 	id string
 	Request *pb.UserCredentialRequest
 	NextUrl string
@@ -93,6 +97,18 @@ func (s *loginSession) NextStep() string {
 	return <-s.rq
 }
 
+func (s *loginSession) Cookie() (string, error) {
+	if (s.cookie != "") {
+		return "", fmt.Errorf("cookie already set")
+	}
+	s.cookie = uuid.New().String()
+	return s.cookie, nil
+}
+
+func (s *loginSession) VerifyCookie(c string) bool {
+	return s.cookie == c && s.cookie != ""
+}
+
 func (s *loginSession) Destroy() {
 	s.p.sessionLock.Lock()
 	delete(s.p.sessions, s.id)
@@ -100,5 +116,3 @@ func (s *loginSession) Destroy() {
 	close(s.rq)
 	log.Printf("Cleaned up session %s", s.id)
 }
-
-

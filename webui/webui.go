@@ -1,11 +1,17 @@
 package webui
 
 import (
+	"flag"
+	"fmt"
 	"html/template"
 	"log"
 	"net"
 	"net/http"
 	"sync"
+)
+
+var (
+	secureCookie = flag.Bool("secure_cookie", true, "Whether or not to mark the session cookie for only HTTPS use")
 )
 
 type webuiServer struct {
@@ -105,14 +111,34 @@ func (s *webuiServer) withSession(rh func(*loginSession, http.ResponseWriter, *h
 			http.Error(w, "Invalid session ID provided", http.StatusBadRequest)
 			return
 		}
+		// On the first request, generate a secret cookie to verify session progress
+		c, err := r.Cookie("Auth-Session-Secret")
+		if err == nil {
+			if !session.VerifyCookie(c.Value) {
+				err = fmt.Errorf("failed to validate cookie")
+			}
+		}
+		if err != nil {
+			secret, err := session.Cookie()
+			if err != nil {
+				log.Printf("Tried to set cookie twice, probably something bad going on - rejecting request")
+				http.Error(w, "No session cookie", http.StatusBadRequest)
+				return
+			}
+
+			c := &http.Cookie{
+				Name: "Auth-Session-Secret",
+				Value: secret,
+				Path: "/",
+				Secure: *secureCookie,
+			}
+			http.SetCookie(w, c)
+		}
 		rh(session, w, r)
 	}
 }
 
 func (s *webuiServer) Serve(l net.Listener) {
-	// TODO(bluecmd): We probably want to verify a cookie to make it so that an
-	// attacker cannot simply refresh /review?session=XXX if they get their hands
-	// on the session ID (which is not supposed to be secret).
 	http.HandleFunc("/login", s.withSession(s.handleLogin))
 	http.HandleFunc("/next", s.withSession(s.handleNext))
 	http.HandleFunc("/review", s.withSession(s.handleReview))
