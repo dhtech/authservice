@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	pb "github.com/dhtech/proto/auth"
 	vault "github.com/hashicorp/vault/api"
@@ -13,6 +14,7 @@ import (
 var (
 	vaultSshMount = flag.String("vault_ssh_mount", "ssh", "Mount point for the SSH signer in Vault")
 	vaultTtl      = flag.String("vault_ttl", "20h", "Validity duration of signed artificats from Vault")
+	vaultRenew    = flag.String("vault_renew", "24h", "How often to renew the token")
 )
 
 type Auditor interface {
@@ -22,6 +24,24 @@ type Auditor interface {
 type signer struct {
 	a Auditor
 	v *vault.Client
+}
+
+func (s *signer) renewer() {
+	d, err := time.ParseDuration(*vaultRenew)
+	if err != nil {
+		log.Fatalf("unable to parse Vault renew interval")
+	}
+	log.Printf("Bumping Vault token TTL")
+	s.v.Auth().Token().RenewSelf(int(d.Seconds() * 5))
+	renewTicker := time.NewTicker(d)
+
+	for {
+		select {
+		case <-renewTicker.C:
+			log.Printf("Renewing Vault token")
+			s.v.Auth().Token().RenewSelf(int(d.Seconds() * 5))
+		}
+	}
 }
 
 func (s *signer) Sign(r *pb.UserCredentialRequest, u *pb.VerifiedUser) (*pb.CredentialResponse, error) {
@@ -58,5 +78,6 @@ func New(a Auditor) *signer {
 		a: a,
 		v: v,
 	}
+	go s.renewer()
 	return s
 }
