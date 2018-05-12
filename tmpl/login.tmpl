@@ -1,0 +1,22 @@
+{{define "login"}}
+<h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+<label for="username" class="sr-only">Username</label>
+<input name="username" type="username" id="username" class="form-control" placeholder="Username" required autofocus>
+<label for="password" class="sr-only">Password</label>
+<input name="password" type="password" id="password" class="form-control" placeholder="Password" required>
+<button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+{{end}}
+
+{{define "login-script"}}
+<script>
+function getFormData() {
+  var username = document.getElementById("username").value
+  var password = document.getElementById("password").value
+  return "username=" + encodeURIComponent(username) +
+    "&password=" + encodeURIComponent(password);
+}
+function startForm() {
+  document.getElementById("username").focus();
+}
+</script>
+{{end}}

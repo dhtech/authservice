@@ -9,9 +9,11 @@ import (
 )
 
 type webuiServer struct {
-	loginTmpl *template.Template
-	sessionLock *sync.Mutex
-	sessions map[string]*loginSession
+	completeTmpl *template.Template
+	loginTmpl    *template.Template
+	reviewTmpl   *template.Template
+	sessionLock  *sync.Mutex
+	sessions     map[string]*loginSession
 }
 
 func (s *webuiServer) handleLogin(sess *loginSession, w http.ResponseWriter, r *http.Request) {
@@ -58,15 +60,37 @@ func (s *webuiServer) handleNext(sess *loginSession, w http.ResponseWriter, r *h
 }
 
 func (s *webuiServer) handleReview(sess *loginSession, w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("content-type", "text/plain")
-	// TODO(bluecmd)
-	w.Write([]byte("TODO"))
+	if r.Method == "GET" {
+		s.renderReview(sess, w, r)
+	}
+	if r.Method == "POST" {
+		s.processReview(sess, w, r)
+	}
+}
+
+func (s *webuiServer) renderReview(sess *loginSession, w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("content-type", "text/html;charset=utf-8")
+	err := s.reviewTmpl.Execute(w, sess)
+	if err != nil {
+		log.Printf("error when rendering review template: %v", err)
+	}
+}
+
+func (s *webuiServer) processReview(sess *loginSession, w http.ResponseWriter, r *http.Request) {
+	err := sess.ProcessReview()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	log.Printf("Review challenge successful")
 }
 
 func (s *webuiServer) handleComplete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("content-type", "text/plain")
-	// TODO(bluecmd): Make this screen nicer
-	w.Write([]byte("You're done, you can close this window"))
+	w.Header().Add("content-type", "text/html;charset=utf-8")
+	err := s.completeTmpl.Execute(w, nil)
+	if err != nil {
+		log.Printf("error when rendering complete template: %v", err)
+	}
 }
 
 func (s *webuiServer) withSession(rh func(*loginSession, http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
@@ -95,7 +119,9 @@ func (s *webuiServer) Serve(l net.Listener) {
 
 func New() *webuiServer {
 	s := new(webuiServer)
-	s.loginTmpl = template.Must(template.ParseFiles("login.tmpl"))
+	s.completeTmpl = template.Must(template.ParseFiles("tmpl/site.tmpl", "tmpl/no-validate.tmpl", "tmpl/complete.tmpl"))
+	s.loginTmpl = template.Must(template.ParseFiles("tmpl/site.tmpl", "tmpl/validate.tmpl", "tmpl/login.tmpl"))
+	s.reviewTmpl = template.Must(template.ParseFiles("tmpl/site.tmpl", "tmpl/validate.tmpl", "tmpl/review.tmpl"))
 	s.sessions = make(map[string]*loginSession)
 	s.sessionLock = &sync.Mutex{}
 	return s

@@ -21,6 +21,7 @@ type loginSession struct {
 	id string
 	Ident string
 	NextUrl string
+	Page string
 }
 
 type attempt struct {
@@ -68,13 +69,22 @@ func (s *loginSession) ChallengeComplete() *pb.UserAction {
 	return nil
 }
 
-func (s *loginSession) ProcessLogin(username string, password string) error {
+func (s *loginSession) sendAttempt(a *attempt) error {
 	select {
-	case s.atq <- &attempt{username, password}:
+	case s.atq <- a:
 		return <-s.eq
 	default:
 		return fmt.Errorf("Session is gone")
 	}
+
+}
+
+func (s *loginSession) ProcessLogin(username string, password string) error {
+	return s.sendAttempt(&attempt{username, password})
+}
+
+func (s *loginSession) ProcessReview() error {
+	return s.sendAttempt(&attempt{})
 }
 
 func (s *loginSession) NextStep() string {

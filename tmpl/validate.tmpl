@@ -1,0 +1,36 @@
+{{define "head-script"}}
+<script>
+var ident = "{{.Ident}}";
+var nextUrl = "{{.NextUrl}}";
+</script>
+{{end}}
+
+{{define "body-script"}}
+<script>
+var xhr = new XMLHttpRequest();
+xhr.onreadystatechange = function() {
+  if (this.readyState == XMLHttpRequest.DONE) {
+    if (this.status == 200 && this.responseText == ident) {
+      console.log("Correct ident received");
+      document.getElementById("login").style.display = "block";
+      document.getElementById("validating").style.display = "none";
+      startForm();
+    } else {
+      console.log("Error verifying local prodaccess");
+      console.log(this);
+      document.getElementById("error").style.display = "block";
+      document.getElementById("validating").style.display = "none";
+    }
+  }
+}
+
+/* Induce a 1s delay to make the user aware we're checking and to get a chance
+ * of reading the message. */
+setTimeout(function() {
+  /* Note this needs to be 127.0.0.1 and not "localhost" for Firefox to
+   * be happy. */
+  xhr.open("GET", "http://127.0.0.1:1215/");
+  xhr.send();
+}, 1000);
+</script>
+{{end}}
