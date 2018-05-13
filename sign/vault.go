@@ -32,14 +32,21 @@ func (s *signer) renewer() {
 		log.Fatalf("unable to parse Vault renew interval")
 	}
 	log.Printf("Bumping Vault token TTL")
-	s.v.Auth().Token().RenewSelf(int(d.Seconds() * 5))
+	_, err = s.v.Auth().Token().RenewSelf(int(d.Seconds() * 5))
+	if err != nil {
+		log.Printf("WARNING: unable to renew Vault token: %v", err)
+	}
+
 	renewTicker := time.NewTicker(d)
 
 	for {
 		select {
 		case <-renewTicker.C:
 			log.Printf("Renewing Vault token")
-			s.v.Auth().Token().RenewSelf(int(d.Seconds() * 5))
+			_, err := s.v.Auth().Token().RenewSelf(int(d.Seconds() * 5))
+			if err != nil {
+				log.Printf("WARNING: unable to renew Vault token: %v", err)
+			}
 		}
 	}
 }
