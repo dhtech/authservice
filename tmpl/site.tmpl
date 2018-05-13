@@ -108,7 +108,10 @@ function postForm() {
         // We're done with this stage.
         // The "next()" function will now return and redirect us to the next
         // page.
+      } else if (xhr.status == 0) {
+        // Aborted request.
       } else {
+        console.log("Got form post status " + xhr.status);
         failed();
       }
     }
