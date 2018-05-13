@@ -16,6 +16,7 @@ from port
 {{ end }}
 </td></tr>
 <tr><td>SSH Public Key:</td><td><code>{{.Request.SshCertificateRequest.PublicKey}}</code></td></tr>
+<tr><td>Vault Token:</td><td>{{ if .Request.VaultTokenRequest }}create{{ else }}do not create{{ end }}</td></tr>
 </table>
 
 <br>
