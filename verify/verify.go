@@ -22,8 +22,8 @@ type Session interface {
 	ChallengeReview(*pb.VerifiedUser) *pb.UserAction
 
 	// The final screen showing something nice to the user prompting to close
-	// the window.
-	ChallengeComplete() *pb.UserAction
+	// the window. Sets the attached cookie if set.
+	ChallengeComplete(*pb.BrowserCookie) *pb.UserAction
 
 	Destroy()
 }
@@ -36,9 +36,14 @@ type AuthBackend interface {
 	Verify(auth.Attempt) ([]string, error)
 }
 
+type Signer interface {
+	Sign(*pb.UserCredentialRequest, *pb.VerifiedUser) (*pb.CredentialResponse, error)
+}
+
 type verifier struct {
 	sessionServer SessionServer
 	ldap AuthBackend
+	signer Signer
 }
 
 func waitForAttempt(atq chan auth.Attempt) (auth.Attempt, error) {
@@ -54,7 +59,7 @@ func waitForAttempt(atq chan auth.Attempt) (auth.Attempt, error) {
 	}
 }
 
-func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, user *pb.VerifiedUser) error {
+func (v *verifier) VerifyAndSign(r *pb.UserCredentialRequest, aq chan *pb.UserAction, user *pb.VerifiedUser) (*pb.CredentialResponse, error) {
 	// Challenge the user to visit our login web page where we will talk to the
 	// local prodaccess running on the user's computer to try to verify that
 	// the user has not been tricked to follow some other person's link.
@@ -82,7 +87,7 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 		var err error
 		a, err = waitForAttempt(atq)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		groups, err = v.ldap.Verify(a)
 		if err == nil {
@@ -105,22 +110,30 @@ func (v *verifier) Verify(r *pb.UserCredentialRequest, aq chan *pb.UserAction, u
 	}
 	_, err := waitForAttempt(atq)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// The review always succeeded if it didn't time out
 	eq <- nil
 
-	// Tell the user we're finished with the challenges
-	c = s.ChallengeComplete()
+	log.Printf("Done verifying %v, proceeding to signing", r)
+	res, err := v.signer.Sign(r, user)
+	if err != nil {
+		return nil, err
+	}
+
+	// Tell the user we're finished with the challenges and set the browser
+	// cookie if it was requested and granted.
+	c = s.ChallengeComplete(res.BrowserCookie)
 	if c != nil {
 		aq <- c
 	}
-	return nil
+	return res, nil
 }
 
-func New(sessionServer SessionServer) *verifier {
+func New(sessionServer SessionServer, signer Signer) *verifier {
 	v := verifier{
 		sessionServer: sessionServer,
+		signer: signer,
 		ldap: auth.NewLdap(),
 	}
 	return &v

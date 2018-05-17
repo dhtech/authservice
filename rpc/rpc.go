@@ -11,15 +11,10 @@ import (
 )
 
 type Verifier interface {
-	Verify(*pb.UserCredentialRequest, chan *pb.UserAction, *pb.VerifiedUser) error
-}
-
-type Signer interface {
-	Sign(*pb.UserCredentialRequest, *pb.VerifiedUser) (*pb.CredentialResponse, error)
+	VerifyAndSign(*pb.UserCredentialRequest, chan *pb.UserAction, *pb.VerifiedUser) (*pb.CredentialResponse, error)
 }
 
 type authServer struct {
-	signer Signer
 	verifier Verifier
 }
 
@@ -44,14 +39,9 @@ func (s *authServer) RequestUserCredential(r *pb.UserCredentialRequest, stream p
 		user.ReverseDns = rdns[0]
 	}
 
-	err = s.verifier.Verify(r, aq, &user)
+	res, err := s.verifier.VerifyAndSign(r, aq, &user)
 	if err != nil {
 		log.Printf("User failed validation: %v", err)
-		return err
-	}
-	log.Printf("Done verifying %v, proceeding to signing", *r)
-	res, err := s.signer.Sign(r, &user)
-	if err != nil {
 		return err
 	}
 	stream.Send(res)
@@ -65,9 +55,8 @@ func (s *authServer) Serve(l net.Listener) {
 	g.Serve(l)
 }
 
-func New(signer Signer, verifier Verifier) *authServer {
+func New(verifier Verifier) *authServer {
 	s := new(authServer)
-	s.signer = signer
 	s.verifier = verifier
 	return s
 }

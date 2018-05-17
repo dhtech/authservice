@@ -45,3 +45,10 @@ type ProtectedCookie struct {
 	Cookie []byte
 	Sig    []byte
 }
+
+type realTime struct {}
+var RealTime realTime
+
+func (t *realTime) Now() time.Time {
+	return time.Now()
+}

@@ -32,8 +32,8 @@ func main() {
 	a := audit.New()
 	si := sign.New(a)
 	w := webui.New()
-	v := verify.New(w)
-	r := rpc.New(si, v)
+	v := verify.New(w, si)
+	r := rpc.New(v)
 
 	go r.Serve(sg)
 	go w.Serve(sh)

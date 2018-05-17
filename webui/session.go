@@ -71,7 +71,7 @@ func (s *loginSession) ChallengeReview(u *pb.VerifiedUser) *pb.UserAction {
 	return nil
 }
 
-func (s *loginSession) ChallengeComplete() *pb.UserAction {
+func (s *loginSession) ChallengeComplete(c *pb.BrowserCookie) *pb.UserAction {
 	s.rq <- "/complete"
 	return nil
 }
