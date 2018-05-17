@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tink-ab/login-service/session"
 )
 
 type FakeCrypto struct{}
@@ -69,29 +68,24 @@ func (p *FakeTokenProvider) Validate(b []byte, d string, g string) (*Request, er
 }
 
 func NewTestMinter() *Minter {
-	p := make(map[string]Provider)
 	ftp := FakeTokenProvider{}
-	p["test-provider"] = &ftp
-	dp := "test-provider"
 	t := FakeTime{}
 	c := FakeCrypto{}
 	s := FakeSigner{}
-	return NewMinter(time.Minute, &c, &s, p, dp, &t)
+	return NewMinter(time.Minute, &c, &s, &ftp, &t)
 }
 
 func NewTestValidator() *Validator {
-	p := make(map[string]Provider)
 	ftp := FakeTokenProvider{}
-	p["test-provider"] = &ftp
 	t := FakeTime{}
 	c := FakeCrypto{}
 	v := FakeVerifier{}
-	return NewValidator(&c, &v, p, &t)
+	return NewValidator(&c, &v, &ftp, &t)
 }
 
-func NewTestRequest(p string, t string) []byte {
+func NewTestRequest(ver string, t string) []byte {
 	cs := Cookie{
-		Provider: p,
+		Version:  ver,
 		Token:    []byte(t),
 	}
 	v, _ := json.Marshal(cs)
@@ -107,12 +101,26 @@ func TestCreate(t *testing.T) {
 	// TODO
 }
 
+type FakeSession struct {
+}
+
+func (s *FakeSession) User() string {
+	return "dummy-user"
+}
+
+func (s *FakeSession) Domain() string {
+	return "test-domain"
+}
+
+func (s *FakeSession) Groups() []string {
+	return []string{"a-group", "test-group"}
+}
+
 func TestCreateValidate(t *testing.T) {
 	m := NewTestMinter()
 	v := NewTestValidator()
 
-	s := session.LoginSession{}
-	s.Domain = "test-domain"
+	s := FakeSession{}
 	c, err := m.Create(&s)
 	assert.NoError(t, err)
 
@@ -125,7 +133,7 @@ func TestValidateSuccess(t *testing.T) {
 	v := NewTestValidator()
 
 	// Successful token
-	r := NewTestRequest("test-provider", "test-token")
+	r := NewTestRequest("v1", "test-token")
 	u, err := v.Validate(r, "test-domain", "test-group")
 	assert.NoError(t, err)
 	assert.Equal(t, "test-user", u.User)
@@ -134,7 +142,7 @@ func TestValidateSuccess(t *testing.T) {
 func TestValidateInvalidToken(t *testing.T) {
 	v := NewTestValidator()
 	// Invalid token
-	r := NewTestRequest("test-provider", "invalid-token")
+	r := NewTestRequest("v1", "invalid-token")
 	_, err := v.Validate(r, "test-domain", "test-group")
 	assert.Error(t, err)
 }
@@ -166,13 +174,13 @@ func TestValidateCorruptTokenJSON(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestValidateInvalidProvider(t *testing.T) {
+func TestValidateInvalidVersion(t *testing.T) {
 	v := NewTestValidator()
 
-	// Invalid provider
-	r := NewTestRequest("invalid-provider", "")
+	// Invalid version
+	r := NewTestRequest("v2", "")
 	_, err := v.Validate(r, "test-domain", "test-group")
-	assert.EqualError(t, err, "provider not found")
+	assert.EqualError(t, err, "unknown version: v2")
 }
 
 func TestValidateInvalidSignature(t *testing.T) {

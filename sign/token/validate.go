@@ -18,11 +18,12 @@ package token
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 )
 
 type Validator struct {
-	// Supported token providers
-	providers map[string]Provider
+	// Token provider
+	provider Provider
 	// Time provider
 	time Time
 	// Cookie crypto
@@ -50,16 +51,20 @@ func (v *Validator) Validate(d []byte, domain string, group string) (*Request, e
 		return nil, err
 	}
 
-	pr := v.providers[c.Provider]
+	if c.Version != "v1" {
+		return nil, fmt.Errorf("unknown version: %s", c.Version)
+	}
+
+	pr := v.provider
 	if pr == nil {
 		return nil, errors.New("provider not found")
 	}
 	return pr.Validate(c.Token, domain, group)
 }
 
-func NewValidator(c Crypto, ve Verifier, p map[string]Provider, t Time) *Validator {
+func NewValidator(c Crypto, ve Verifier, p Provider, t Time) *Validator {
 	v := Validator{}
-	v.providers = p
+	v.provider = p
 	v.crypto = c
 	v.verifier = ve
 	v.time = t

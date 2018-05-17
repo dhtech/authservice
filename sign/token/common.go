@@ -37,7 +37,7 @@ type Request struct {
 }
 
 type Cookie struct {
-	Provider string
+	Version  string
 	Token    []byte
 }
 

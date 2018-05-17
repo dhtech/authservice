@@ -17,20 +17,14 @@ package token
 
 import (
 	"encoding/json"
-	"errors"
-	log "github.com/Sirupsen/logrus"
 	"time"
-
-	"github.com/tink-ab/login-service/session"
 )
 
 type Minter struct {
 	// Max TTL
 	ttl time.Duration
-	// Default token provider
-	defaultProvider string
-	// Supported token providers
-	providers map[string]Provider
+	// Token provider
+	provider Provider
 	// Time provider
 	time Time
 	// Cookie crypto settings
@@ -39,22 +33,24 @@ type Minter struct {
 	signer Signer
 }
 
-func (m *Minter) Create(s *session.LoginSession) ([]byte, error) {
-	if s.Used {
-		return nil, errors.New("token used twice")
-	}
+type Session interface {
+	Domain() string
+	User()   string
+	Groups() []string
+}
 
+func (m *Minter) Create(s Session) ([]byte, error) {
 	expiry := m.time.Now().Add(m.ttl)
 
 	req := Request{}
-	req.Domain = s.Domain
-	req.User = s.Email
-	req.Groups = s.Groups
+	req.Domain = s.Domain()
+	req.User = s.User()
+	req.Groups = s.Groups()
 	req.Expiry = expiry
 
 	cookie := Cookie{}
-	cookie.Provider = m.defaultProvider
-	token, err := m.providers[m.defaultProvider].New(req)
+	cookie.Version = "v1"
+	token, err := m.provider.New(req)
 	if err != nil {
 		return nil, err
 	}
@@ -74,18 +70,14 @@ func (m *Minter) Create(s *session.LoginSession) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("%s: token minted for %s (presence: %v, expiry: %v)",
-		s.Email, s.Domain, s.PresenceValidated, req.Expiry)
-	s.Used = true
 	return v, nil
 }
 
-func NewMinter(ttl time.Duration, c Crypto, s Signer, p map[string]Provider, dp string, t Time) *Minter {
+func NewMinter(ttl time.Duration, c Crypto, s Signer, p Provider, t Time) *Minter {
 	m := Minter{}
 	m.ttl = ttl
 	m.signer = s
-	m.providers = p
-	m.defaultProvider = dp
+	m.provider = p
 	m.crypto = c
 	m.time = t
 	return &m
