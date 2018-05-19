@@ -23,6 +23,7 @@ type signer struct {
 func (s *signer) Sign(r *pb.UserCredentialRequest, u *pb.VerifiedUser) (*pb.CredentialResponse, error) {
 	res := &pb.CredentialResponse{}
 
+	// TODO(bluecmd): Refactor this
 	artifacts := make([]string, 0)
 	if r.SshCertificateRequest != nil {
 		a, err := s.signSsh(r, u, res)
@@ -42,6 +43,30 @@ func (s *signer) Sign(r *pb.UserCredentialRequest, u *pb.VerifiedUser) (*pb.Cred
 
 	if r.KubernetesCertificateRequest != nil {
 		a, err := s.signKubernetes(r, u, res)
+		if err != nil {
+			return nil, err
+		}
+		artifacts = append(artifacts, a)
+	}
+
+	if r.BrowserCertificateRequest != nil {
+		a, err := s.signBrowser(r, u, res)
+		if err != nil {
+			return nil, err
+		}
+		artifacts = append(artifacts, a)
+	}
+
+	if r.VmwareCertificateRequest != nil {
+		a, err := s.signVmware(r, u, res)
+		if err != nil {
+			return nil, err
+		}
+		artifacts = append(artifacts, a)
+	}
+
+	if r.BrowserCookieRequest != nil {
+		a, err := s.signBrowserCookie(r, u, res)
 		if err != nil {
 			return nil, err
 		}

@@ -18,10 +18,12 @@ import (
 )
 
 var (
-	vaultSshMount = flag.String("vault_ssh_mount", "ssh", "Mount point for the SSH signer in Vault")
-	vaultTtl      = flag.String("vault_ttl", "20h", "Validity duration of signed artificats from Vault")
-	vaultRenew    = flag.String("vault_renew", "24h", "How often to renew the token")
-	vaultGroupMap = flag.String("vault_group_map", "{}", "JSON group map from LDAP group DN to policy")
+	vaultSshMount     = flag.String("vault_ssh_mount", "ssh", "Mount point for the SSH signer in Vault")
+	vaultTtl          = flag.String("vault_ttl", "20h", "Validity duration of short signed artifacts from Vault")
+	vaultLongTtl      = flag.String("vault_long_ttl", "2160h", "Validity duration of long signed artifacts from Vault")
+	vaultRenew        = flag.String("vault_renew", "24h", "How often to renew the token")
+	vaultGroupMap     = flag.String("vault_group_map", "{}", "JSON group map from LDAP group DN to policy")
+	vaultVmwareDomain = flag.String("vault_vmware_domain", "tech.dreamhack.se", "VMware uses AD UPNs in the format of ${user}@{$domain}, this is the domain part")
 )
 
 func (s *signer) renewer() {
@@ -91,6 +93,37 @@ func (s *signer) signVault(r *pb.UserCredentialRequest, u *pb.VerifiedUser, res 
 		Token: sk.Auth.ClientToken,
 	}
 	return "Vault token", nil
+}
+
+func (s *signer) signBrowser(r *pb.UserCredentialRequest, u *pb.VerifiedUser, res *pb.CredentialResponse) (string, error) {
+	data := map[string]interface{}{
+		"csr": string(r.BrowserCertificateRequest.Csr),
+		"ttl": *vaultLongTtl,
+		"common_name": u.Username,
+	}
+	sk, err := s.v.Logical().Write("browser-pki/sign/user", data)
+	if err != nil {
+		log.Printf("failed to sign browser certificate: %v", err)
+		return "", fmt.Errorf("failed to sign browser certificate")
+	}
+	res.BrowserCertificate.Certificate = sk.Data["certificate"].(string)
+	return "Browser certificate", nil
+}
+
+func (s *signer) signVmware(r *pb.UserCredentialRequest, u *pb.VerifiedUser, res *pb.CredentialResponse) (string, error) {
+	data := map[string]interface{}{
+		"csr": string(r.VmwareCertificateRequest.Csr),
+		"ttl": *vaultTtl,
+		"common_name": u.Username,
+		"other_sans": fmt.Sprintf("1.3.6.1.4.1.1;UTF8:%s@%s", u.Username, *vaultVmwareDomain),
+	}
+	sk, err := s.v.Logical().Write("vmware-pki/sign/user", data)
+	if err != nil {
+		log.Printf("failed to sign VMware certificate: %v", err)
+		return "", fmt.Errorf("failed to sign VMware certificate")
+	}
+	res.VmwareCertificate.Certificate = sk.Data["certificate"].(string)
+	return "VMware certificate", nil
 }
 
 func (s *signer) signKubernetes(r *pb.UserCredentialRequest, u *pb.VerifiedUser, res *pb.CredentialResponse) (string, error) {
