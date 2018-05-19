@@ -24,7 +24,28 @@ var (
 	vaultRenew        = flag.String("vault_renew", "24h", "How often to renew the token")
 	vaultGroupMap     = flag.String("vault_group_map", "{}", "JSON group map from LDAP group DN to policy")
 	vaultVmwareDomain = flag.String("vault_vmware_domain", "tech.dreamhack.se", "VMware uses AD UPNs in the format of ${user}@{$domain}, this is the domain part")
+	// This is needed because Vault includes full CA chain *except* the root CA
+	vaultRootCa       = flag.String("vault_include_root_ca", "ca-pki/cert/ca", "Include this certificate in the CA chain")
 )
+
+func toStringArray(elems interface{}) []string {
+	var res []string
+	for _, elem := range elems.([]interface{}) {
+		res = append(res, elem.(string))
+	}
+	return res
+}
+
+func (s *signer) appendRootCa(chain []string) []string {
+	if *vaultRootCa == "" {
+		return chain
+	}
+	r, err := s.v.Logical().Read(*vaultRootCa)
+	if err != nil {
+		log.Fatalf("Unable to read root CA to include: %v", err)
+	}
+	return append(chain, r.Data["certificate"].(string))
+}
 
 func (s *signer) renewer() {
 	d, err := time.ParseDuration(*vaultRenew)
@@ -106,7 +127,11 @@ func (s *signer) signBrowser(r *pb.UserCredentialRequest, u *pb.VerifiedUser, re
 		log.Printf("failed to sign browser certificate: %v", err)
 		return "", fmt.Errorf("failed to sign browser certificate")
 	}
-	res.BrowserCertificate.Certificate = sk.Data["certificate"].(string)
+	res.BrowserCertificate = &pb.BrowserCertificate{
+		CaChain: toStringArray(sk.Data["ca_chain"]),
+		Certificate: sk.Data["certificate"].(string),
+	}
+	res.BrowserCertificate.CaChain = s.appendRootCa(res.BrowserCertificate.CaChain)
 	return "Browser certificate", nil
 }
 
@@ -122,7 +147,11 @@ func (s *signer) signVmware(r *pb.UserCredentialRequest, u *pb.VerifiedUser, res
 		log.Printf("failed to sign VMware certificate: %v", err)
 		return "", fmt.Errorf("failed to sign VMware certificate")
 	}
-	res.VmwareCertificate.Certificate = sk.Data["certificate"].(string)
+	res.VmwareCertificate = &pb.VmwareCertificate{
+		CaChain: toStringArray(sk.Data["ca_chain"]),
+		Certificate: sk.Data["certificate"].(string),
+	}
+	res.VmwareCertificate.CaChain = s.appendRootCa(res.VmwareCertificate.CaChain)
 	return "VMware certificate", nil
 }
 
@@ -161,7 +190,9 @@ func (s *signer) signKubernetes(r *pb.UserCredentialRequest, u *pb.VerifiedUser,
 		log.Printf("failed to sign Kubernetes certificate: %v", err)
 		return "", fmt.Errorf("failed to sign Kubernetes certificate")
 	}
+	res.KubernetesCertificate.CaChain = toStringArray(sk.Data["ca_chain"])
 	res.KubernetesCertificate.Certificate = sk.Data["certificate"].(string)
+	res.KubernetesCertificate.CaChain = s.appendRootCa(res.KubernetesCertificate.CaChain)
 	return "Kubernetes certificate", nil
 }
 
