@@ -45,7 +45,7 @@ func (a *attempt) Credential() string {
 
 func (s *webuiServer) NewSession(r *pb.UserCredentialRequest, atq chan auth.Attempt, eq chan error) verify.Session {
 	id := uuid.New().String()
-	rq := make(chan string, 1)
+	rq := make(chan string, 0)
 	sess := &loginSession{
 		Request: r,
 		NextUrl: fmt.Sprintf("/next?session=%s", id),
