@@ -72,7 +72,7 @@ func (s *loginSession) ChallengeReview(u *pb.VerifiedUser) *pb.UserAction {
 }
 
 func (s *loginSession) ChallengeComplete(c *pb.BrowserCookie) *pb.UserAction {
-	s.rq <- "/complete"
+	s.rq <- fmt.Sprintf("/complete?session=%s", s.id)
 	return nil
 }
 
@@ -91,6 +91,10 @@ func (s *loginSession) ProcessLogin(username string, password string) error {
 }
 
 func (s *loginSession) ProcessReview() error {
+	return s.sendAttempt(&attempt{})
+}
+
+func (s *loginSession) ProcessComplete() error {
 	return s.sendAttempt(&attempt{})
 }
 

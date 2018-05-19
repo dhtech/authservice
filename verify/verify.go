@@ -133,7 +133,12 @@ func (v *verifier) VerifyAndSign(r *pb.UserCredentialRequest, aq chan *pb.UserAc
 	// before replying to the user.
 	// What seems to happen is that when the GRPC channel is closed, the next
 	// HTTP request will simply fail.
-	time.Sleep(3 * time.Second)
+	_, err = waitForAttempt(atq)
+	if err != nil {
+		return nil, err
+	}
+	// The complete page always succeeded
+	eq <- nil
 
 	log.Printf("Response flow done for %v", user.Username)
 	return res, nil

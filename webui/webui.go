@@ -91,12 +91,13 @@ func (s *webuiServer) processReview(sess *loginSession, w http.ResponseWriter, r
 	log.Printf("Review challenge successful")
 }
 
-func (s *webuiServer) handleComplete(w http.ResponseWriter, r *http.Request) {
+func (s *webuiServer) handleComplete(sess *loginSession, w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("content-type", "text/html;charset=utf-8")
 	err := s.completeTmpl.Execute(w, nil)
 	if err != nil {
 		log.Printf("error when rendering complete template: %v", err)
 	}
+	sess.ProcessComplete()
 }
 
 func (s *webuiServer) withSession(rh func(*loginSession, http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
@@ -142,7 +143,7 @@ func (s *webuiServer) Serve(l net.Listener) {
 	http.HandleFunc("/login", s.withSession(s.handleLogin))
 	http.HandleFunc("/next", s.withSession(s.handleNext))
 	http.HandleFunc("/review", s.withSession(s.handleReview))
-	http.HandleFunc("/complete", s.handleComplete)
+	http.HandleFunc("/complete", s.withSession(s.handleComplete))
 	http.Serve(l, nil)
 }
 
