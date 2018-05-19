@@ -129,6 +129,7 @@ func (v *verifier) VerifyAndSign(r *pb.UserCredentialRequest, aq chan *pb.UserAc
 		aq <- c
 	}
 
+	time.Sleep(10 * time.Second)
 	log.Printf("Response flow done for %v", user.Username)
 	return res, nil
 }
