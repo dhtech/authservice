@@ -115,7 +115,7 @@ func (v *verifier) VerifyAndSign(r *pb.UserCredentialRequest, aq chan *pb.UserAc
 	// The review always succeeded if it didn't time out
 	eq <- nil
 
-	log.Printf("Done verifying %v, proceeding to signing", r)
+	log.Printf("Done verifying %v, proceeding to signing", user.Username)
 	res, err := v.signer.Sign(r, user)
 	if err != nil {
 		return nil, err
@@ -123,10 +123,13 @@ func (v *verifier) VerifyAndSign(r *pb.UserCredentialRequest, aq chan *pb.UserAc
 
 	// Tell the user we're finished with the challenges and set the browser
 	// cookie if it was requested and granted.
+	log.Printf("Artifacts signed for %v, moving user to success", user.Username)
 	c = s.ChallengeComplete(res.BrowserCookie)
 	if c != nil {
 		aq <- c
 	}
+
+	log.Printf("Response flow done for %v", user.Username)
 	return res, nil
 }
 

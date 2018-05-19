@@ -45,6 +45,7 @@ func (s *authServer) RequestUserCredential(r *pb.UserCredentialRequest, stream p
 		return err
 	}
 	stream.Send(res)
+	log.Printf("Response sent")
 	return nil
 }
 
