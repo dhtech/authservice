@@ -129,6 +129,12 @@ func (v *verifier) VerifyAndSign(r *pb.UserCredentialRequest, aq chan *pb.UserAc
 		aq <- c
 	}
 
+	// TODO(bluecmd): Nginx seems to have some timing issue so let's wait
+	// before replying to the user.
+	// What seems to happen is that when the GRPC channel is closed, the next
+	// HTTP request will simply fail.
+	time.Sleep(3 * time.Second)
+
 	log.Printf("Response flow done for %v", user.Username)
 	return res, nil
 }
