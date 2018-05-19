@@ -16,8 +16,10 @@ from port
 {{ end }}
 </td></tr>
 <tr><td>SSH Public Key:</td><td><code>{{.Request.SshCertificateRequest.PublicKey}}</code></td></tr>
-<tr><td>Vault Token:</td><td>{{ if .Request.VaultTokenRequest }}create{{ else }}do not create{{ end }}</td></tr>
-<tr><td>Kubernetes Certificate:</td><td>{{ if .Request.KubernetesCertificateRequest }}create{{ else }}do not create{{ end }}</td></tr>
+<tr><td>Vault:</td><td>{{ if .Request.VaultTokenRequest }}create token{{ else }}do not renew{{ end }}</td></tr>
+<tr><td>Kubernetes:</td><td>{{ if .Request.KubernetesCertificateRequest }}create certificate{{ else }}do not renew certificate{{ end }}</td></tr>
+<tr><td>VMware:</td><td>{{ if .Request.VmwareCertificateRequest }}create certificate{{ else }}do not renew certificate{{ end }}</td></tr>
+<tr><td>Browser:</td><td>{{ if .Request.BrowserCertificateRequest }}create certificate{{ else }}do not renew certificate{{ end }}</td></tr>
 </table>
 
 <br>
