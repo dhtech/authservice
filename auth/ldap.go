@@ -33,6 +33,11 @@ func (l *ldapAuth) Verify(a Attempt) ([]string, error) {
 		return []string{}, err
 	}
 
+	return l.resolve(dn, c)
+}
+
+func (l *ldapAuth) resolve(dn string, c *ldap.Conn) ([]string, error) {
+
 	// Login succeeded, get groups.
 	// We're using RFC2307bis, so doing a search for our DN should be easy enough.
 	sreq := ldap.NewSearchRequest(
@@ -47,7 +52,12 @@ func (l *ldapAuth) Verify(a Attempt) ([]string, error) {
 
 	groups := make([]string, 0)
 	for _, entry := range sr.Entries {
+		recurse, err := l.resolve(entry.DN, c)
+		if err != nil {
+			return nil, err
+		}
 		groups = append(groups, entry.DN)
+		groups = append(groups, recurse...)
 	}
 	return groups, nil
 }
