@@ -76,6 +76,7 @@ func (s *signer) signSsh(r *pb.UserCredentialRequest, u *pb.VerifiedUser, res *p
 	kd := map[string]interface{}{
 		"public_key": r.SshCertificateRequest.PublicKey,
 		"valid_principals": u.Username,
+		"key_id": u.Username,
 		"ttl": *vaultTtl,
 	}
 	sk, err := s.v.SSHWithMountPoint(*vaultSshMount).SignKey("user", kd)
